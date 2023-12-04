@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Star Review Component</title>
+    <style>
+        :root {
+            --selected-star-color: gold;
+            --unselected-star-color: gray;
+        }
+    </style>
+    <template id="star-rating-template">
+        <style>
+            .star-rating {
+                display: inline-block;
+                font-size: 3rem;
+                color: gray;
+                /* fallback */
+                color: var(--unselected-star-color);
+            }
+
+            .star-rating.selected {
+                color: gold;
+                /* fallback */
+                color: var(--selected-star-color);
+            }
+        </style>
+        <h1 id="star-rating-name"></h1>
+        <div id="star-rating"></div>
+        <p id="star-rating-message"></p>
+    </template>
+</head>
+
+<body>
+    <rating-widget>
+        <form action="http://httpbin.org/post" method="POST">
+            <label for="rating">How satisfied are you?</label>
+            <input type="hidden" name="question" value="How satisfied are you?">
+            <input type="hidden" id="sentBy" name="sentBy" value="HTML">
+            <input type="number" id="rating" name="rating" min="1" max="5" value="0" required>
+            <button type="submit">Submit</button>
+        </form>
+    </rating-widget>
+    <script type="module">
+        class RatingWidget extends HTMLElement {
+            constructor() {
+                super();
+                const template = document.getElementById('star-rating-template');
+                this.attachShadow({ mode: 'open' });
+                this.shadowRoot.appendChild(template.content.cloneNode(true));
+            }
+
+            connectedCallback() {
+                const form = this.querySelector('form');
+                const ratingInput = this.querySelector('#rating');
+                const starsContainer = this.shadowRoot.querySelector('#star-rating');
+                const maxRating = Math.max(3, Math.min(10, ratingInput.max));
+                // Select the label and get its content
+                const label = this.querySelector('label[for="rating"]');
+                const labelContent = label.innerHTML;
+
+                // Add the label content to the title of the star rating component
+                const title = this.shadowRoot.querySelector('#star-rating-name');
+                title.textContent += `${labelContent}`;
+
+                for (let i = 0; i < maxRating; i++) {
+                    const star = document.createElement('span');
+                    star.textContent = '★';
+                    const unselectedColor = getComputedStyle(document.body).getPropertyValue('--unselected-star-color').trim();
+                    star.style.color = unselectedColor;
+                    star.className = 'star-rating';
+                    star.addEventListener('mouseover', () => this.updateStars(i + 1));
+                    star.addEventListener('click', () => {
+                        ratingInput.value = i + 1;
+                        form.dispatchEvent(new Event('submit'));
+                    });
+                    starsContainer.appendChild(star);
+                }
+
+                form.addEventListener('submit', (event) => {
+                    event.preventDefault();
+                    // Override the value of the SentBy field
+                    const sentByField = this.querySelector('#sentBy');
+                    sentByField.value = 'JS';
+                    fetch(form.action, {
+                        method: form.method,
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                            'X-Sent-By': 'JS'
+                        },
+                        body: new URLSearchParams(new FormData(form))
+                    }).then(response => response.json())
+                        .then(data => console.log(data)); // Log the response to the console
+
+                    // Update the text of starRatingMessage based on the rating
+                    const starRatingMessage = this.shadowRoot.querySelector('#star-rating-message');
+                    let starRating = ratingInput.value;
+                    let percentage = (starRating / maxRating) * 100; // Calculate the percentage of the rating
+
+                    if (percentage < 80) {
+                        starRatingMessage.textContent = 'We are sorry to hear that. We will do our best to improve.';
+                    } else {
+                        starRatingMessage.textContent = 'Thank you for your high rating!';
+                    }
+
+                });
+            }
+
+            updateStars(rating) {
+                const stars = this.shadowRoot.querySelectorAll('.star-rating')
+                const selectedColor = getComputedStyle(document.body).getPropertyValue('--selected-star-color').trim();
+                const unselectedColor = getComputedStyle(document.body).getPropertyValue('--unselected-star-color').trim();
+                stars.forEach((star, index) => {
+                    star.style.color = index < rating ? selectedColor : unselectedColor;
+                });
+            }
+        }
+        customElements.define('rating-widget', RatingWidget);
+    </script>
+</body>
+
+</html>
