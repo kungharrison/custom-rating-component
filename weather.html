@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Weather Component</title>
+</head>
+
+<body>
+    <h1>Current Weather</h1>
+    <h2>UCSD La Jolla, CA</h2>
+    <div id="weather-widget">
+        <noscript>Current Weather Conditions Unavailable</noscript>
+    </div>
+    <script>
+        fetch('https://api.weather.gov/points/32.87968,-117.23631')
+            .then(response => response.json())
+            .then(data => {
+                // Extract the forecast URLs
+                const forecastUrl = data.properties.forecast;
+                const forecastHourlyUrl = data.properties.forecastHourly;
+                const forecastGridDataUrl = data.properties.forecastGridData;
+
+                // Fetch the forecast data
+                return Promise.all([
+                    fetch(forecastUrl).then(response => response.json()),
+                    fetch(forecastHourlyUrl).then(response => response.json()),
+                    fetch(forecastGridDataUrl).then(response => response.json())
+                ]);
+            })
+            .then(([forecastData, forecastHourlyData, forecastGridData]) => {
+                // Extract the necessary information from the forecast data
+                const weather = forecastData.properties.periods[0];
+                let icon = 'sunny.svg';
+                if (weather.isDaytime == false)
+                {
+                    icon = 'night.svg';
+                }
+                else if (weather.shortForecast.includes('Cloudy'))
+                {
+                    icon = 'cloudy.svg';
+                }
+
+
+                if (weather.probabilityOfPrecipitation.value != null)
+                {
+                    icon = 'rainy.svg';
+                }
+                else if (parseInt(weather.windSpeed, 10) > 10)
+                {
+                    icon = 'windy.svg';
+                }
+
+                const shortForecast = weather.shortForecast;
+                const temperature = weather.temperature;
+                const temperatureUnit = weather.temperatureUnit;
+
+                // Update the HTML of the widget
+                const widget = document.querySelector('#weather-widget');
+                widget.innerHTML = `
+                    <img src="${icon}" alt="${shortForecast}">
+                    <p>${shortForecast}, ${temperature} ${temperatureUnit}</p>
+                `;
+
+                // You can also use forecastHourlyData and forecastGridData here...
+            })
+            .catch(error => console.error('Error:', error));
+    </script>
+    
+</body>
+</html>
